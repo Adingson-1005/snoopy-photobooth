@@ -462,6 +462,97 @@ fileInput.addEventListener('change', async () => {
 
 document.getElementById('backBtn').addEventListener('click', () => showScreen('landing'));
 
+
+// ===== GENERATE + RESULT =====
+const resultImg = document.getElementById('resultImg');
+const downloadBtn = document.getElementById('downloadBtn');
+const resetBtn = document.getElementById('resetBtn');
+const isTouch = window.matchMedia('(pointer: coarse)').matches;
+const FILENAME = 'snoopy-birthday-photostrip.png';
+let resultBlob = null;
+let resultUrl = null;
+
+async function generateStrip() {
+  if (photos.some(p => !p)) {
+    errorEl.textContent = 'Please add all 4 photos first.';
+    return;
+  }
+  generateBtn.disabled = true;
+  generateBtn.textContent = 'Generating...';
+  try {
+    await Promise.all([
+      document.fonts.load("76px 'Pacifico'"),
+      document.fonts.load("400 40px 'Fredoka'"),
+      document.fonts.load("600 40px 'Fredoka'")
+    ]);
+    await preloadChars();
+
+    const c = document.createElement('canvas');
+    c.width = W;
+    c.height = H;
+    renderStrip(c.getContext('2d'), settings, photos, 1);
+
+    const blob = await new Promise(res => c.toBlob(res, 'image/png'));
+    if (!blob) throw new Error('Could not create the image. Please try again.');
+
+    if (resultUrl) URL.revokeObjectURL(resultUrl);
+    resultBlob = blob;
+    resultUrl = URL.createObjectURL(blob);
+    resultImg.src = resultUrl;
+    errorEl.textContent = '';
+    showScreen('result');
+  } catch (err) {
+    errorEl.textContent = err.message || 'Something went wrong. Please try again.';
+  } finally {
+    generateBtn.textContent = 'Generate Photostrip';
+    generateBtn.disabled = photos.some(p => !p);
+  }
+}
+
+async function downloadStrip() {
+  if (!resultBlob) return;
+  const file = new File([resultBlob], FILENAME, { type: 'image/png' });
+
+  // Phones: native Share sheet (has "Save Image")
+  if (isTouch && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: "Snoopy's Photo Booth" });
+      return;
+    } catch (err) {
+      if (err.name === 'AbortError') return;   // user closed the sheet
+    }
+  }
+
+  // Desktop / fallback: normal download
+  const a = document.createElement('a');
+  a.href = resultUrl;
+  a.download = FILENAME;
+  document.body.append(a);
+  a.click();
+  a.remove();
+}
+
+function resetAll() {
+  photos.fill(null);
+  settings = defaultSettings();
+  errorEl.textContent = '';
+  syncControls();
+  update();
+}
+
+generateBtn.addEventListener('click', generateStrip);
+downloadBtn.addEventListener('click', downloadStrip);
+document.getElementById('editBtn').addEventListener('click', () => showScreen('editor'));
+
+resetBtn.addEventListener('click', () => {
+  if (confirm('Clear your photos and start over?')) resetAll();
+});
+
+document.getElementById('anotherBtn').addEventListener('click', () => {
+  if (!confirm('Start a new photostrip? Your current one will be cleared. Download it first if you want to keep it.')) return;
+  resetAll();
+  showScreen('editor');
+});
 // ===== INIT =====
 async function init() {
   syncControls();
