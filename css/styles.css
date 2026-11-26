@@ -1,0 +1,103 @@
+:root {
+  --pink: #f8c8dc;
+  --cream: #fff8ec;
+  --blue: #bfe3f5;
+  --yellow: #fff1a8;
+  --red: #e85d75;
+}
+* { box-sizing: border-box; margin: 0; }
+body {
+  font-family: 'Fredoka', sans-serif;
+  background: var(--cream);
+  overflow-x: hidden;
+}
+h1, h2 { font-family: 'Pacifico', cursive; color: var(--red); }
+.screen {
+  display: none;
+  min-height: 100vh;
+  padding: 24px 16px;
+  text-align: center;
+}
+.screen.active { display: block; }
+button {
+  font: inherit;
+  padding: 14px 28px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--pink);
+  cursor: pointer;
+}
+
+/* Landing */
+#landing {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--cream);
+  background-image:
+    linear-gradient(90deg, rgba(248,200,220,.45) 50%, transparent 50%),
+    linear-gradient(rgba(248,200,220,.45) 50%, transparent 50%);
+  background-size: 40px 40px;
+}
+#landing.active {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.landing-card {
+  position: relative;
+  z-index: 2;
+  max-width: 480px;
+  width: 100%;
+  padding: 32px 24px;
+  background: var(--cream);
+  border: 4px dashed var(--pink);
+  border-radius: 28px;
+  box-shadow: 0 10px 0 var(--blue), 0 18px 30px rgba(0,0,0,.12);
+}
+.landing-card h1 { font-size: clamp(1.8rem, 6vw, 2.6rem); margin-bottom: 14px; }
+.landing-card p { margin-bottom: 24px; line-height: 1.5; color: #6b5b5b; }
+
+.btn-primary {
+  background: var(--red);
+  color: #fff;
+  font-weight: 600;
+  font-size: 1.1rem;
+  box-shadow: 0 5px 0 #b8445a;
+  transition: transform .15s, box-shadow .15s;
+}
+.btn-primary:hover { transform: translateY(-2px); }
+.btn-primary:active { transform: translateY(4px); box-shadow: 0 1px 0 #b8445a; }
+
+/* Characters (decorative, never block clicks) */
+.char {
+  position: absolute;
+  z-index: 1;
+  width: clamp(80px, 20vw, 170px);
+  pointer-events: none;
+  animation: bob 4s ease-in-out infinite;
+}
+.c1 { top: 4%;    left: 3%; }
+.c2 { top: 5%;    right: 3%; animation-delay: -1s; }
+.c3 { bottom: 4%; left: 4%;  animation-delay: -2s; }
+.c4 { bottom: 4%; right: 4%; animation-delay: -3s; }
+
+@keyframes bob {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50%      { transform: translateY(-12px) rotate(3deg); }
+}
+
+/* Floating hearts/stars */
+.floaters { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+.floater {
+  position: absolute;
+  bottom: -40px;
+  animation: rise linear infinite;
+  opacity: .8;
+}
+@keyframes rise {
+  to { transform: translateY(-115vh) rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .char, .floater { animation: none; }
+}

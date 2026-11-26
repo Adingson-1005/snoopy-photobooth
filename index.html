@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Snoopy's Photo Booth</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Pacifico&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <section id="landing" class="screen active">
+  <div class="floaters" id="floaters"></div>
+
+  <img class="char c1" src="assets/characters/snoopy1.png" alt="" onerror="this.style.display='none'">
+  <img class="char c2" src="assets/characters/snoopy2.png" alt="" onerror="this.style.display='none'">
+  <img class="char c3" src="assets/characters/snoopy3.png" alt="" onerror="this.style.display='none'">
+  <img class="char c4" src="assets/characters/snoopy4.png" alt="" onerror="this.style.display='none'">
+
+  <div class="landing-card">
+    <h1>Welcome to Snoopy's Photo Booth!</h1>
+    <p>Happy Birthday, [Name]! 🎂<br>Make a photostrip of your favorite moments and keep it forever.</p>
+    <button id="startBtn" class="btn-primary">Start Creating</button>
+  </div>
+</section>
+
+  <section id="editor" class="screen">
+    <h2>Photo Booth</h2>
+  </section>
+
+  <section id="result" class="screen">
+    <h2>Your Photostrip</h2>
+  </section>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
