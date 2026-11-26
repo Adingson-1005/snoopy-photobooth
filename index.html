@@ -45,6 +45,8 @@
         <div class="panel">
           <h3>1. Your photos</h3>
           <div class="slots" id="slots"></div>
+          <button type="button" class="btn-ghost camera-open-btn" id="cameraOpenBtn">Take a photo</button>
+          <p class="hint small camera-hint">Camera access requires permission and HTTPS (or localhost).</p>
           <p class="error" id="uploadError" role="alert"></p>
         </div>
 
@@ -160,6 +162,20 @@
       <button id="editBtn" class="btn-ghost">Back to edit</button>
     </div>
   </section>
+
+  <!-- CAMERA MODAL -->
+  <div id="cameraModal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="cameraTitle">
+    <div class="modal-card">
+      <h3 id="cameraTitle">Take a photo</h3>
+      <p class="hint small" id="cameraStatus" role="status" aria-live="polite">Allow camera access to continue.</p>
+      <video id="cameraVideo" autoplay playsinline muted aria-label="Live camera preview"></video>
+      <p class="error" id="cameraError" role="alert"></p>
+      <div class="modal-actions">
+        <button type="button" id="cameraCancel" class="btn-ghost">Cancel</button>
+        <button type="button" id="cameraCapture" class="btn-primary" disabled>Take photo</button>
+      </div>
+    </div>
+  </div>
 
   <!-- CROP / ADJUST MODAL -->
   <div id="cropModal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="cropTitle">

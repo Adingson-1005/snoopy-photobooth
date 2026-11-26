@@ -162,6 +162,18 @@ button {
 }
 .icon-btn svg { width: 16px; height: 16px; fill: none; stroke: var(--red); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
 .error { color: var(--red); min-height: 1.4em; font-size: .9rem; }
+.camera-open-btn { width: 100%; }
+.camera-open-btn:disabled { opacity: .5; cursor: not-allowed; }
+.camera-hint { margin: 8px 0 0; }
+#cameraVideo {
+  display: block;
+  width: 100%;
+  max-height: 60vh;
+  border-radius: 14px;
+  background: #222;
+  object-fit: contain;
+  transform: scaleX(-1);
+}
 
 /* Customize controls */
 .customize { text-align: left; }

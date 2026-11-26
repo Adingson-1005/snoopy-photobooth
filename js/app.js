@@ -171,6 +171,15 @@ const slotsEl = document.getElementById('slots');
 const fileInput = document.getElementById('fileInput');
 const errorEl = document.getElementById('uploadError');
 const generateBtn = document.getElementById('generateBtn');
+const cameraOpenBtn = document.getElementById('cameraOpenBtn');
+const cameraModal = document.getElementById('cameraModal');
+const cameraVideo = document.getElementById('cameraVideo');
+const cameraCaptureBtn = document.getElementById('cameraCapture');
+const cameraErrorEl = document.getElementById('cameraError');
+const cameraStatus = document.getElementById('cameraStatus');
+let cameraStream = null;
+let cameraRequestId = 0;
+let cameraSlot = null;
 
 const SVG = {
   upload: '<svg viewBox="0 0 24 24" width="32" height="32"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg>',
@@ -713,6 +722,7 @@ document.addEventListener('keydown', e => {
 function update() {
   renderSlots();
   generateBtn.disabled = photos.some(p => !p);
+  cameraOpenBtn.disabled = photos.every(Boolean);
   scheduleRender();
 }
 
@@ -728,6 +738,90 @@ fileInput.addEventListener('change', async () => {
   } catch (err) {
     errorEl.textContent = err.message;
   }
+});
+
+function stopCamera() {
+  cameraRequestId++;
+  cameraCaptureBtn.disabled = true;
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(track => track.stop());
+    cameraStream = null;
+  }
+  cameraVideo.srcObject = null;
+  cameraModal.hidden = true;
+  document.body.style.overflow = '';
+}
+
+async function openCamera() {
+  cameraSlot = photos.findIndex(photo => !photo);
+  if (cameraSlot === -1) return;
+
+  cameraErrorEl.textContent = '';
+  cameraStatus.textContent = `Camera will fill photo ${cameraSlot + 1}.`;
+  cameraModal.hidden = false;
+  document.body.style.overflow = 'hidden';
+  document.getElementById('cameraCancel').focus();
+
+  if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+    cameraErrorEl.textContent = 'Camera access requires HTTPS (or localhost) and a supported browser.';
+    return;
+  }
+
+  const requestId = ++cameraRequestId;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: { facingMode: 'user' }
+    });
+    if (requestId !== cameraRequestId || cameraModal.hidden) {
+      stream.getTracks().forEach(track => track.stop());
+      return;
+    }
+
+    cameraStream = stream;
+    cameraVideo.srcObject = stream;
+    await cameraVideo.play();
+    cameraCaptureBtn.disabled = false;
+    cameraStatus.textContent = `Ready for photo ${cameraSlot + 1}.`;
+  } catch (err) {
+    if (requestId !== cameraRequestId) return;
+    if (err.name === 'NotAllowedError' || err.name === 'SecurityError') {
+      cameraErrorEl.textContent = 'Camera permission was denied. Allow camera access in your browser settings and try again.';
+    } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+      cameraErrorEl.textContent = 'No camera was found on this device.';
+    } else {
+      cameraErrorEl.textContent = 'Could not start the camera. Check that it is not being used by another app, then try again.';
+    }
+    stopCamera();
+    cameraModal.hidden = false;
+  }
+}
+
+cameraOpenBtn.addEventListener('click', openCamera);
+document.getElementById('cameraCancel').addEventListener('click', stopCamera);
+cameraModal.addEventListener('click', e => {
+  if (e.target === cameraModal) stopCamera();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !cameraModal.hidden) stopCamera();
+});
+cameraCaptureBtn.addEventListener('click', () => {
+  if (!cameraStream || !cameraVideo.videoWidth || cameraSlot === null) return;
+
+  const scale = Math.min(1, MAX_SIDE / Math.max(cameraVideo.videoWidth, cameraVideo.videoHeight));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(cameraVideo.videoWidth * scale);
+  canvas.height = Math.round(cameraVideo.videoHeight * scale);
+  const context = canvas.getContext('2d');
+  context.translate(canvas.width, 0);
+  context.scale(-1, 1);
+  context.drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
+
+  photos[cameraSlot] = canvas;
+  adjusts[cameraSlot] = defaultAdjust();
+  stopCamera();
+  cameraSlot = null;
+  update();
 });
 
 document.getElementById('backBtn').addEventListener('click', () => navigateBack('landing'));
@@ -937,10 +1031,14 @@ function handlePopState(event) {
   const id = stateScreen || (document.getElementById(hashScreen) ? hashScreen : 'landing');
   showScreen(id, 'none');
 
+  if (!cameraModal.hidden) stopCamera();
   if (!cropModal.hidden) closeCropper();
 }
 
 window.addEventListener('popstate', handlePopState);
+window.addEventListener('pagehide', () => {
+  if (!cameraModal.hidden) stopCamera();
+});
 
 async function init() {
   syncControls();
