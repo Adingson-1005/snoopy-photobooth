@@ -342,3 +342,72 @@ button {
   height: calc(100% - 12px);
   object-fit: contain;
 }
+
+/* ===== Landing palettes (temporary compare switch) ===== */
+#landing[data-palette="navy"] {
+  --l-bg: #07090f;
+  --l-stripe: rgba(50, 85, 190, .42);
+  --l-card: #111a36;
+  --l-line: #7aa7ff;
+  --l-under: #04060c;
+  --l-title: #e8eefc;
+  --l-text: #c5d0ee;
+  --l-btn: #4f7be0;
+  --l-btn-edge: #2c4a9c;
+}
+#landing[data-palette="brown"] {
+  --l-bg: #2a1a12;
+  --l-stripe: rgba(70, 125, 195, .38);
+  --l-card: #3b261b;
+  --l-line: #7fb4e6;
+  --l-under: #1e3f66;
+  --l-title: #f3e3cc;
+  --l-text: #e6d2b5;
+  --l-btn: #4f8fcf;
+  --l-btn-edge: #2f5d8c;
+}
+
+#landing[data-palette] {
+  background-color: var(--l-bg);
+  background-image:
+    linear-gradient(90deg, var(--l-stripe) 50%, transparent 50%),
+    linear-gradient(var(--l-stripe) 50%, transparent 50%);
+}
+#landing[data-palette] .landing-card {
+  background: var(--l-card);
+  border-color: var(--l-line);
+  box-shadow: 0 10px 0 var(--l-under), 0 18px 30px rgba(0, 0, 0, .45);
+}
+#landing[data-palette] .landing-card h1 { color: var(--l-title); }
+#landing[data-palette] .landing-card p { color: var(--l-text); }
+#landing[data-palette] .btn-primary { background: var(--l-btn); box-shadow: 0 5px 0 var(--l-btn-edge); }
+#landing[data-palette] .btn-primary:active { box-shadow: 0 1px 0 var(--l-btn-edge); }
+#landing[data-palette] .char { filter: drop-shadow(0 0 3px #fff) drop-shadow(0 0 1px #fff); }
+
+/* floating hearts / stars per palette */
+#landing[data-palette="navy"] .floater:nth-child(4n+1) svg { fill: #7aa7ff; }
+#landing[data-palette="navy"] .floater:nth-child(4n+2) svg { fill: #e8eefc; }
+#landing[data-palette="navy"] .floater:nth-child(4n+3) svg { fill: #4f7be0; }
+#landing[data-palette="navy"] .floater:nth-child(4n+4) svg { fill: #9fb8e8; }
+#landing[data-palette="brown"] .floater:nth-child(4n+1) svg { fill: #7fb4e6; }
+#landing[data-palette="brown"] .floater:nth-child(4n+2) svg { fill: #e6c9a0; }
+#landing[data-palette="brown"] .floater:nth-child(4n+3) svg { fill: #4f8fcf; }
+#landing[data-palette="brown"] .floater:nth-child(4n+4) svg { fill: #c98f5a; }
+
+/* temporary switch button */
+.palette-btn {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  font-size: .9rem;
+  background: rgba(255, 255, 255, .92);
+  border: 2px solid var(--pink);
+}
+.palette-btn svg { fill: none; stroke: var(--red); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.palette-btn circle { fill: var(--red); stroke: none; }

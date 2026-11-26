@@ -27,6 +27,11 @@
             <br>
       <p>Made by: Ally</p>
     </div>
+
+    <button id="paletteBtn" class="palette-btn" type="button" aria-label="Switch color palette">
+        <svg viewBox="0 0 24 24" width="20" height="20"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.3-.5-.8-.5-1.2 0-1.1.9-2 2-2h2.3c2 0 3.7-1.7 3.7-3.7C21 6.7 17 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10.5" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/></svg>
+        <span id="paletteLabel">Palette: Original</span>
+    </button>
   </section>
 
   <!-- EDITOR -->
@@ -49,8 +54,10 @@
           <div class="field">
             <span class="label">Theme</span>
             <div class="chips">
-              <label class="chip"><input type="radio" name="theme" value="pink" checked><span>Pink Snoopy</span></label>
-              <label class="chip"><input type="radio" name="theme" value="vintage"><span>Vintage Peanuts</span></label>
+                <label class="chip"><input type="radio" name="theme" value="pink" checked><span>Pink Snoopy</span></label>
+                <label class="chip"><input type="radio" name="theme" value="vintage"><span>Vintage Peanuts</span></label>
+                <label class="chip"><input type="radio" name="theme" value="navy"><span>Navy &amp; Black</span></label>
+                <label class="chip"><input type="radio" name="theme" value="brownblue"><span>Brown &amp; Blue</span></label>
             </div>
           </div>
 
@@ -92,7 +99,7 @@
         </div>
 
         <div class="actions">
-          <button id="generateBtn" class="btn-primary" disabled>Generate Photostrip</button>
+          <button id="generateBtn" class="btn-primary" disabled>Save Photostrip</button>
           <button id="resetBtn" class="btn-ghost">Reset</button>
           <button id="backBtn" class="btn-ghost">Back</button>
         </div>

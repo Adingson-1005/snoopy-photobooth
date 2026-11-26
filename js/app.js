@@ -98,6 +98,36 @@ const THEMES = {
       { name: 'Navy',       color: '#2c3e50', dark: true, text: '#f0e0bd', accent: '#d9a441' },
       { name: 'Burgundy',   color: '#6e2c3a', dark: true, text: '#f6dfc8', accent: '#d9a441' }
     ]
+  },
+  navy: {
+    pattern: 'gingham',
+    text: '#e8eefc',
+    accent: '#7aa7ff',
+    frame: '#f4f6fb',
+    deco: ['#7aa7ff', '#e8eefc', '#4f7be0', '#9fb8e8'],
+    bgs: [
+      { name: 'Midnight',   color: '#0d1530', dark: true, stripe: 'rgba(70,100,190,0.30)' },
+      { name: 'Black',      color: '#08080c', dark: true, stripe: 'rgba(40,64,140,0.45)' },
+      { name: 'Navy',       color: '#14214a', dark: true, stripe: 'rgba(100,140,230,0.25)' },
+      { name: 'Royal navy', color: '#1c3a7a', dark: true, stripe: 'rgba(0,0,0,0.30)' },
+      { name: 'Slate',      color: '#232a3a', dark: true, stripe: 'rgba(255,255,255,0.08)' }
+    ]
+  },
+  brownblue: {
+    pattern: 'paper',
+    text: '#f3e3cc',
+    accent: '#7fb4e6',
+    frame: '#fbf3e6',
+    deco: ['#7fb4e6', '#e6c9a0', '#4f8fcf', '#c98f5a'],
+    bgs: [
+      { name: 'Dark brown', color: '#3b261b', dark: true },
+      { name: 'Espresso',   color: '#24160f', dark: true },
+      { name: 'Chocolate',  color: '#523624', dark: true },
+      { name: 'Denim',      color: '#2f5d8c', dark: true, text: '#f3e3cc', accent: '#e6c9a0' },
+      { name: 'Deep blue',  color: '#1e3f66', dark: true, text: '#f3e3cc', accent: '#e6c9a0' },
+      { name: 'Sky',        color: '#a9cbe8', text: '#3b261b', accent: '#2f5d8c' },
+      { name: 'Tan',        color: '#d8b895', text: '#3b261b', accent: '#2f5d8c' }
+    ]
   }
 };
 
@@ -350,7 +380,7 @@ function drawBackground(ctx, theme, bg) {
   ctx.fillRect(0, 0, W, H);
 
   if (theme.pattern === 'gingham') {
-    ctx.fillStyle = bg.dark ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.35)';
+    ctx.fillStyle = bg.stripe || (bg.dark ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.35)');
     for (let x = 0; x < W; x += 60) ctx.fillRect(x, 0, 30, H);
     for (let y = 0; y < H; y += 60) ctx.fillRect(0, y, W, 30);
   } else {
@@ -374,6 +404,7 @@ function drawBackground(ctx, theme, bg) {
   ctx.stroke();
   ctx.setLineDash([]);
 }
+
 function drawMarginDecor(ctx, s, theme) {
   const map = { hearts: 'heart', stars: 'star', flowers: 'flower', sparkles: 'sparkle' };
   const kinds = Object.keys(map).filter(k => s.stickers[k]).map(k => map[k]);
@@ -926,3 +957,22 @@ async function init() {
   scheduleRender();                           // redraw with fonts + stickers
 }
 init();
+
+// ===== LANDING PALETTE SWITCH (temporary, for comparing) =====
+const landingEl = document.getElementById('landing');
+const paletteBtn = document.getElementById('paletteBtn');
+const paletteLabel = document.getElementById('paletteLabel');
+const PALETTES = [
+  { key: '',      label: 'Original' },
+  { key: 'navy',  label: 'Navy & Black' },
+  { key: 'brown', label: 'Brown & Blue' }
+];
+let paletteIdx = 0;
+
+paletteBtn.addEventListener('click', () => {
+  paletteIdx = (paletteIdx + 1) % PALETTES.length;
+  const p = PALETTES[paletteIdx];
+  if (p.key) landingEl.dataset.palette = p.key;
+  else delete landingEl.dataset.palette;
+  paletteLabel.textContent = 'Palette: ' + p.label;
+});
