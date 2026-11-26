@@ -43,10 +43,19 @@ const THEMES = {
     frame: '#ffffff',
     deco: ['#e85d75', '#f8a5c2', '#ffd966', '#9fd6f0'],
     bgs: [
-      { name: 'Pastel pink', color: '#f8c8dc' },
-      { name: 'Soft rose', color: '#ffdbe8' },
-      { name: 'Baby blue', color: '#bfe3f5' },
-      { name: 'Butter yellow', color: '#fff1a8' }
+      { name: 'Pastel pink',   color: '#f8c8dc' },
+      { name: 'Soft rose',     color: '#ffdbe8' },
+      { name: 'Baby blue',     color: '#bfe3f5' },
+      { name: 'Butter yellow', color: '#fff1a8' },
+      { name: 'Mint',          color: '#cdeedd' },
+      { name: 'Lavender',      color: '#dccbf5' },
+      { name: 'Peach',         color: '#ffd4b8' },
+      { name: 'Hot pink',      color: '#e87aa5', dark: true, text: '#ffffff', accent: '#fff1a8' },
+      { name: 'Rose wine',     color: '#a8325e', dark: true, text: '#ffe6ef', accent: '#f8c8dc' },
+      { name: 'Ocean blue',    color: '#3a6ea5', dark: true, text: '#e8f3ff', accent: '#bfe3f5' },
+      { name: 'Forest green',  color: '#2f5d50', dark: true, text: '#e6f5ea', accent: '#ffd966' },
+      { name: 'Midnight navy', color: '#1f2a4d', dark: true, text: '#fff1a8', accent: '#f8c8dc' },
+      { name: 'Charcoal',      color: '#2b2b33', dark: true, text: '#ffe6ef', accent: '#f8a5c2' }
     ]
   },
   vintage: {
@@ -56,10 +65,18 @@ const THEMES = {
     frame: '#fffaf0',
     deco: ['#b5533c', '#d9a441', '#6f8f72', '#7aa5b8'],
     bgs: [
-      { name: 'Cream', color: '#fff3d6' },
-      { name: 'Parchment', color: '#f0e0bd' },
-      { name: 'Sage', color: '#dfe8d5' },
-      { name: 'Dusty blue', color: '#cfe0e8' }
+      { name: 'Cream',      color: '#fff3d6' },
+      { name: 'Parchment',  color: '#f0e0bd' },
+      { name: 'Sage',       color: '#dfe8d5' },
+      { name: 'Dusty blue', color: '#cfe0e8' },
+      { name: 'Blush',      color: '#f3d9d0' },
+      { name: 'Mustard',    color: '#e7c46a' },
+      { name: 'Terracotta', color: '#c9694a', dark: true, text: '#fff3d6', accent: '#fff3d6' },
+      { name: 'Olive',      color: '#6f7d4f', dark: true, text: '#fff3d6', accent: '#e7c46a' },
+      { name: 'Teal',       color: '#3f6f73', dark: true, text: '#fff3d6', accent: '#e7c46a' },
+      { name: 'Coffee',     color: '#5a3b2a', dark: true, text: '#f0e0bd', accent: '#d9a441' },
+      { name: 'Navy',       color: '#2c3e50', dark: true, text: '#f0e0bd', accent: '#d9a441' },
+      { name: 'Burgundy',   color: '#6e2c3a', dark: true, text: '#f6dfc8', accent: '#d9a441' }
     ]
   }
 };
@@ -308,21 +325,23 @@ function drawShape(ctx, kind, x, y, size, color, rot = 0) {
 }
 
 // Layers
-function drawBackground(ctx, theme, color) {
-  ctx.fillStyle = color;
+function drawBackground(ctx, theme, bg) {
+  ctx.fillStyle = bg.color;
   ctx.fillRect(0, 0, W, H);
 
   if (theme.pattern === 'gingham') {
-    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.fillStyle = bg.dark ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.35)';
     for (let x = 0; x < W; x += 60) ctx.fillRect(x, 0, 30, H);
     for (let y = 0; y < H; y += 60) ctx.fillRect(0, y, W, 30);
   } else {
     const r = rng(7);
-    ctx.fillStyle = 'rgba(120,80,40,0.07)';
+    ctx.fillStyle = bg.dark ? 'rgba(0,0,0,0.12)' : 'rgba(120,80,40,0.07)';
     for (let i = 0; i < 1500; i++) ctx.fillRect(r() * W, r() * H, 1 + r() * 3, 1 + r() * 3);
+    const edge = bg.dark ? 'rgba(0,0,0,0.25)' : 'rgba(120,80,40,0.14)';
+    const clear = bg.dark ? 'rgba(0,0,0,0)' : 'rgba(120,80,40,0)';
     const g = ctx.createRadialGradient(W / 2, H / 2, H * 0.25, W / 2, H / 2, H * 0.7);
-    g.addColorStop(0, 'rgba(120,80,40,0)');
-    g.addColorStop(1, 'rgba(120,80,40,0.14)');
+    g.addColorStop(0, clear);
+    g.addColorStop(1, edge);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, H);
   }
@@ -335,7 +354,6 @@ function drawBackground(ctx, theme, color) {
   ctx.stroke();
   ctx.setLineDash([]);
 }
-
 function drawMarginDecor(ctx, s, theme) {
   const map = { hearts: 'heart', stars: 'star', flowers: 'flower', sparkles: 'sparkle' };
   const kinds = Object.keys(map).filter(k => s.stickers[k]).map(k => map[k]);
@@ -442,12 +460,15 @@ function hitSticker(px, py) {
 // opts.preview = show placeholder text; opts.selectedId = outline a sticker.
 function renderStrip(ctx, s, photoList, scale = 1, adjustList = adjusts, opts = {}) {
   const ph = !!opts.preview;
-  const theme = THEMES[s.theme];
-  const bg = theme.bgs[s.bgIndex] || theme.bgs[0];
+  const base = THEMES[s.theme];
+  const bg = base.bgs[s.bgIndex] || base.bgs[0];
+  // dark backgrounds can override the text and border colors
+  const theme = { ...base, text: bg.text || base.text, accent: bg.accent || base.accent };
+
   ctx.save();
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
   ctx.clearRect(0, 0, W, H);
-  drawBackground(ctx, theme, bg.color);
+  drawBackground(ctx, theme, bg);
   drawMarginDecor(ctx, s, theme);
   drawHeader(ctx, s, theme, ph);
   drawPhotos(ctx, theme, photoList, adjustList);

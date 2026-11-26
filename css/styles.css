@@ -324,3 +324,21 @@ button {
 @media (min-width: 800px) {
   .preview-panel canvas { max-height: calc(100vh - 200px); }
 }
+
+/* ===== Fix: sticker images fit inside their boxes ===== */
+.tray { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.tray-item {
+  position: relative;
+  display: block;
+  padding: 0;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.tray-item img {
+  position: absolute;
+  inset: 6px;
+  width: calc(100% - 12px);
+  height: calc(100% - 12px);
+  object-fit: contain;
+}
