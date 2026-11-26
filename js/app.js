@@ -34,13 +34,6 @@ for (let i = 0; i < 18; i++) {
   floatersEl.appendChild(el);
 }
 
-// ===== CONFIG (edit these anytime) =====
-const CONFIG = {
-  recipientName: '',                  // e.g. 'Maria'
-  woodstock: [],                      // numbers of your Woodstock images, e.g. [5, 9]
-  snoopy: [1, 2, 3, 4, 6, 7, 8, 10]   // numbers of your Snoopy images
-};
-
 // ===== THEMES =====
 const THEMES = {
   pink: {
@@ -74,11 +67,11 @@ const THEMES = {
 // ===== SETTINGS (what the user customizes) =====
 const defaultSettings = () => ({
   theme: 'pink',
-  name: CONFIG.recipientName,
-  message: 'Wishing you the happiest day!',
-  date: 'My Special Day',
+  title: '',
+  caption: '',
+  footer: '',
   bgIndex: 0,
-  stickers: { snoopy: true, woodstock: true, hearts: true, stars: true, flowers: true, sparkles: true }
+  stickers: { hearts: true, stars: true, flowers: true, sparkles: true }   // margin decorations
 });
 let settings = defaultSettings();
 
@@ -93,6 +86,19 @@ const FILTER_OK = 'filter' in CanvasRenderingContext2D.prototype;
 const defaultAdjust = () => ({ zoom: 1, panX: 0, panY: 0, rot: 0, brightness: 100, contrast: 100, saturation: 100 });
 const adjusts = photos.map(defaultAdjust);
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
+// ===== SNOOPY STICKER STATE =====
+const STICKER_COUNT = 10;               // snoopy1.png ... snoopy10.png
+const MAX_PLACED = 40;
+let nextStickerId = 1;
+let selectedId = null;
+
+const newSticker = (n, x, y, size = 200, rot = 0) => ({ id: nextStickerId++, n, x, y, size, rot, flip: false });
+const defaultPlaced = () => [
+  newSticker(1, 135, 135, 170, -5),
+  newSticker(2, 765, 2285, 170, -4)
+];
+let placed = defaultPlaced();
 
 const slotsEl = document.getElementById('slots');
 const fileInput = document.getElementById('fileInput');
@@ -174,15 +180,7 @@ const L = { photoX: 90, photoW: 720, photoH: 450, photoY: 270, gap: 30 };
 const PACIFICO = "'Pacifico', cursive";
 const FREDOKA = "'Fredoka', sans-serif";
 
-// Corner character positions. group = key in CONFIG.
-const CHAR_SLOTS = [
-  { group: 'snoopy',    n: 0, x: 40,  y: 50,   size: 150, rot: -0.08 },
-  { group: 'woodstock', n: 0, x: 710, y: 50,   size: 150, rot: 0.08 },
-  { group: 'woodstock', n: 1, x: 40,  y: 2190, size: 170, rot: 0.06 },
-  { group: 'snoopy',    n: 1, x: 690, y: 2190, size: 170, rot: -0.06 }
-];
-
-// Character image cache
+// Sticker image cache
 const imgCache = {};
 function loadChar(n) {
   return new Promise(resolve => {
@@ -193,8 +191,10 @@ function loadChar(n) {
   });
 }
 async function preloadChars() {
-  const nums = [...CONFIG.snoopy.slice(0, 2), ...CONFIG.woodstock.slice(0, 2)];
-  await Promise.all(nums.map(async n => { imgCache[n] = await loadChar(n); }));
+  const all = Array.from({ length: STICKER_COUNT }, (_, i) => i + 1);
+  await Promise.all(all.map(async n => {
+    if (!imgCache[n]) imgCache[n] = await loadChar(n);
+  }));
 }
 
 // Helpers
@@ -234,6 +234,20 @@ function drawText(ctx, text, x, y, maxW, start, min, family, weight, color) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(text, x, y);
+}
+
+// Returns the user's text, or a faint placeholder (preview only), or nothing
+function pick(value, placeholder, showPlaceholder) {
+  const v = value.trim();
+  if (v) return { text: v, alpha: 1 };
+  return showPlaceholder ? { text: placeholder, alpha: 0.4 } : null;
+}
+function drawLine(ctx, item, x, y, maxW, start, min, family, weight, color) {
+  if (!item) return;
+  ctx.save();
+  ctx.globalAlpha = item.alpha;
+  drawText(ctx, item.text, x, y, maxW, start, min, family, weight, color);
+  ctx.restore();
 }
 
 // Where the photo sits inside a frame, given zoom/rotation/pan
@@ -335,12 +349,9 @@ function drawMarginDecor(ctx, s, theme) {
   }
 }
 
-function drawHeader(ctx, s, theme) {
-  const name = s.name.trim();
-  const title = 'Happy Birthday' + (name ? ', ' + name : '') + '!';
-  drawText(ctx, title, W / 2, 115, 500, 76, 30, PACIFICO, '400', theme.text);
-  const msg = s.message.trim();
-  if (msg) drawText(ctx, msg, W / 2, 195, 500, 36, 20, FREDOKA, '600', theme.text);
+function drawHeader(ctx, s, theme, ph) {
+  drawLine(ctx, pick(s.title, 'Your title here', ph), W / 2, 115, 460, 76, 30, PACIFICO, '400', theme.text);
+  drawLine(ctx, pick(s.caption, 'Add a caption', ph), W / 2, 195, 460, 36, 20, FREDOKA, '600', theme.text);
 }
 
 function drawPhotos(ctx, theme, list, adjustList) {
@@ -373,30 +384,64 @@ function drawPhotos(ctx, theme, list, adjustList) {
   }
 }
 
-function drawFooter(ctx, s, theme) {
-  const date = s.date.trim();
-  if (date) drawText(ctx, date, W / 2, 2275, 440, 44, 22, FREDOKA, '600', theme.text);
+function drawFooter(ctx, s, theme, ph) {
+  drawLine(ctx, pick(s.footer, 'Add a date or note', ph), W / 2, 2275, 440, 44, 22, FREDOKA, '600', theme.text);
   drawText(ctx, "Snoopy's Photo Booth", W / 2, 2335, 440, 34, 20, PACIFICO, '400', theme.accent);
 }
 
-function drawCharacters(ctx, s) {
-  CHAR_SLOTS.forEach(slot => {
-    if (!s.stickers[slot.group]) return;
-    const num = CONFIG[slot.group][slot.n];
-    const img = num !== undefined ? imgCache[num] : null;
+// ----- Snoopy stickers -----
+function stickerBox(st) {
+  const img = imgCache[st.n];
+  if (!img) return { w: st.size, h: st.size };
+  const k = st.size / Math.max(img.width, img.height);
+  return { w: img.width * k, h: img.height * k };
+}
+
+function drawStickers(ctx, list, selId) {
+  list.forEach(st => {
+    const img = imgCache[st.n];
     if (!img) return;
-    const k = Math.min(slot.size / img.width, slot.size / img.height);
-    const w = img.width * k, h = img.height * k;
+    const { w, h } = stickerBox(st);
     ctx.save();
-    ctx.translate(slot.x + slot.size / 2, slot.y + slot.size / 2);
-    ctx.rotate(slot.rot);
+    ctx.translate(st.x, st.y);
+    ctx.rotate(st.rot * Math.PI / 180);
+    if (st.flip) ctx.scale(-1, 1);
     ctx.drawImage(img, -w / 2, -h / 2, w, h);
     ctx.restore();
   });
+
+  // selection outline (preview only)
+  const sel = list.find(st => st.id === selId);
+  if (sel) {
+    const { w, h } = stickerBox(sel);
+    ctx.save();
+    ctx.translate(sel.x, sel.y);
+    ctx.rotate(sel.rot * Math.PI / 180);
+    ctx.strokeStyle = '#e85d75';
+    ctx.lineWidth = 5;
+    ctx.setLineDash([16, 10]);
+    ctx.strokeRect(-w / 2 - 10, -h / 2 - 10, w + 20, h + 20);
+    ctx.restore();
+  }
+}
+
+function hitSticker(px, py) {
+  for (let i = placed.length - 1; i >= 0; i--) {
+    const st = placed[i];
+    const { w, h } = stickerBox(st);
+    const a = -st.rot * Math.PI / 180;
+    const dx = px - st.x, dy = py - st.y;
+    const lx = dx * Math.cos(a) - dy * Math.sin(a);
+    const ly = dx * Math.sin(a) + dy * Math.cos(a);
+    if (Math.abs(lx) <= w / 2 && Math.abs(ly) <= h / 2) return st;
+  }
+  return null;
 }
 
 // Main: draws the whole strip. scale < 1 is used for the small preview.
-function renderStrip(ctx, s, photoList, scale = 1, adjustList = adjusts) {
+// opts.preview = show placeholder text; opts.selectedId = outline a sticker.
+function renderStrip(ctx, s, photoList, scale = 1, adjustList = adjusts, opts = {}) {
+  const ph = !!opts.preview;
   const theme = THEMES[s.theme];
   const bg = theme.bgs[s.bgIndex] || theme.bgs[0];
   ctx.save();
@@ -404,10 +449,10 @@ function renderStrip(ctx, s, photoList, scale = 1, adjustList = adjusts) {
   ctx.clearRect(0, 0, W, H);
   drawBackground(ctx, theme, bg.color);
   drawMarginDecor(ctx, s, theme);
-  drawHeader(ctx, s, theme);
+  drawHeader(ctx, s, theme, ph);
   drawPhotos(ctx, theme, photoList, adjustList);
-  drawFooter(ctx, s, theme);
-  drawCharacters(ctx, s);
+  drawFooter(ctx, s, theme, ph);
+  drawStickers(ctx, placed, opts.selectedId ?? null);
   ctx.restore();
 }
 
@@ -421,13 +466,15 @@ const pctx = previewCanvas.getContext('2d');
 let raf = 0;
 function scheduleRender() {
   cancelAnimationFrame(raf);
-  raf = requestAnimationFrame(() => renderStrip(pctx, settings, photos, PREVIEW_SCALE));
+  raf = requestAnimationFrame(() =>
+    renderStrip(pctx, settings, photos, PREVIEW_SCALE, adjusts, { preview: true, selectedId })
+  );
 }
 
 // ===== CUSTOMIZE CONTROLS =====
-const nameInput = document.getElementById('nameInput');
-const msgInput = document.getElementById('msgInput');
-const dateInput = document.getElementById('dateInput');
+const titleInput = document.getElementById('titleInput');
+const captionInput = document.getElementById('captionInput');
+const footerInput = document.getElementById('footerInput');
 const swatchesEl = document.getElementById('swatches');
 
 function renderSwatches() {
@@ -450,9 +497,9 @@ function renderSwatches() {
 
 // Push current settings into the form fields (also used by Reset)
 function syncControls() {
-  nameInput.value = settings.name;
-  msgInput.value = settings.message;
-  dateInput.value = settings.date;
+  titleInput.value = settings.title;
+  captionInput.value = settings.caption;
+  footerInput.value = settings.footer;
   document.querySelectorAll('input[name="theme"]').forEach(r => { r.checked = r.value === settings.theme; });
   document.querySelectorAll('[data-sticker]').forEach(cb => { cb.checked = settings.stickers[cb.dataset.sticker]; });
   renderSwatches();
@@ -466,14 +513,128 @@ document.querySelectorAll('input[name="theme"]').forEach(r => {
     scheduleRender();
   });
 });
-nameInput.addEventListener('input', () => { settings.name = nameInput.value; scheduleRender(); });
-msgInput.addEventListener('input', () => { settings.message = msgInput.value; scheduleRender(); });
-dateInput.addEventListener('input', () => { settings.date = dateInput.value; scheduleRender(); });
+titleInput.addEventListener('input', () => { settings.title = titleInput.value; scheduleRender(); });
+captionInput.addEventListener('input', () => { settings.caption = captionInput.value; scheduleRender(); });
+footerInput.addEventListener('input', () => { settings.footer = footerInput.value; scheduleRender(); });
 document.querySelectorAll('[data-sticker]').forEach(cb => {
   cb.addEventListener('change', () => {
     settings.stickers[cb.dataset.sticker] = cb.checked;
     scheduleRender();
   });
+});
+
+// ===== STICKER UI (tray, drag/drop, move, toolbar) =====
+const stickerToolbar = document.getElementById('stickerToolbar');
+const trayEl = document.getElementById('tray');
+
+function selectSticker(id) {
+  selectedId = id;
+  stickerToolbar.hidden = id === null;
+  previewCanvas.classList.toggle('editing', id !== null);   // lets touch-drag move stickers
+  scheduleRender();
+}
+
+function toStrip(e) {                       // screen position -> strip coordinates
+  const r = previewCanvas.getBoundingClientRect();
+  return { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H };
+}
+
+function addSticker(n, x, y) {
+  if (placed.length >= MAX_PLACED) return;
+  const off = ((placed.length % 5) - 2) * 40;
+  const st = newSticker(n, clamp(x ?? W / 2 + off, 0, W), clamp(y ?? H / 2 + off, 0, H), 200, 0);
+  placed.push(st);
+  selectSticker(st.id);
+}
+
+// Build the tray
+for (let n = 1; n <= STICKER_COUNT; n++) {
+  const item = document.createElement('div');
+  item.className = 'tray-item';
+  item.draggable = true;
+  item.tabIndex = 0;
+  item.setAttribute('role', 'button');
+  item.setAttribute('aria-label', `Add Snoopy sticker ${n}`);
+  item.innerHTML = `<img src="assets/characters/snoopy${n}.png" alt="" draggable="false">`;
+  item.addEventListener('dragstart', e => {
+    e.dataTransfer.setData('text/plain', String(n));
+    e.dataTransfer.effectAllowed = 'copy';
+  });
+  item.addEventListener('click', () => addSticker(n));
+  item.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); addSticker(n); }
+  });
+  trayEl.append(item);
+}
+
+// Drop a sticker from the tray onto the preview
+previewCanvas.addEventListener('dragover', e => {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'copy';
+  previewCanvas.classList.add('drop-ok');
+});
+previewCanvas.addEventListener('dragleave', () => previewCanvas.classList.remove('drop-ok'));
+previewCanvas.addEventListener('drop', e => {
+  e.preventDefault();
+  previewCanvas.classList.remove('drop-ok');
+  const n = Number(e.dataTransfer.getData('text/plain'));
+  if (!Number.isInteger(n) || n < 1 || n > STICKER_COUNT) return;
+  const p = toStrip(e);
+  addSticker(n, p.x, p.y);
+});
+
+// Select + move stickers already on the strip
+let moving = null;
+previewCanvas.addEventListener('pointerdown', e => {
+  if (e.button !== 0) return;
+  const p = toStrip(e);
+  const hit = hitSticker(p.x, p.y);
+  if (!hit) { selectSticker(null); return; }
+  selectSticker(hit.id);
+  moving = { id: hit.id, dx: hit.x - p.x, dy: hit.y - p.y };
+  previewCanvas.setPointerCapture(e.pointerId);
+  previewCanvas.style.cursor = 'grabbing';
+});
+previewCanvas.addEventListener('pointermove', e => {
+  const p = toStrip(e);
+  if (!moving) {
+    if (e.pointerType === 'mouse') previewCanvas.style.cursor = hitSticker(p.x, p.y) ? 'grab' : 'default';
+    return;
+  }
+  const st = placed.find(s => s.id === moving.id);
+  if (!st) return;
+  st.x = clamp(p.x + moving.dx, 0, W);
+  st.y = clamp(p.y + moving.dy, 0, H);
+  scheduleRender();
+});
+['pointerup', 'pointercancel'].forEach(ev => {
+  previewCanvas.addEventListener(ev, () => { moving = null; previewCanvas.style.cursor = 'default'; });
+});
+
+// Toolbar buttons
+function tool(id, fn) {
+  document.getElementById(id).addEventListener('click', () => {
+    const st = placed.find(s => s.id === selectedId);
+    if (!st) return;
+    fn(st);
+    scheduleRender();
+  });
+}
+tool('stSmaller', st => { st.size = clamp(st.size * 0.9, 40, 900); });
+tool('stBigger',  st => { st.size = clamp(st.size * 1.1, 40, 900); });
+tool('stRotL',    st => { st.rot -= 10; });
+tool('stRotR',    st => { st.rot += 10; });
+tool('stFlip',    st => { st.flip = !st.flip; });
+tool('stFront',   st => { placed = placed.filter(s => s !== st); placed.push(st); });
+tool('stDelete',  st => { placed = placed.filter(s => s !== st); selectSticker(null); });
+
+// Delete key removes the selected sticker
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Delete' || selectedId === null) return;
+  if (!document.getElementById('cropModal').hidden) return;
+  if (/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
+  placed = placed.filter(s => s.id !== selectedId);
+  selectSticker(null);
 });
 
 // ===== UPDATE + EVENTS =====
@@ -526,7 +687,7 @@ async function generateStrip() {
     const c = document.createElement('canvas');
     c.width = W;
     c.height = H;
-    renderStrip(c.getContext('2d'), settings, photos, 1);
+    renderStrip(c.getContext('2d'), settings, photos, 1);   // no placeholders, no selection outline
 
     const blob = await new Promise(res => c.toBlob(res, 'image/png'));
     if (!blob) throw new Error('Could not create the image. Please try again.');
@@ -572,8 +733,10 @@ function resetAll() {
   photos.fill(null);
   adjusts.forEach((_, i) => { adjusts[i] = defaultAdjust(); });
   settings = defaultSettings();
+  placed = defaultPlaced();
   errorEl.textContent = '';
   syncControls();
+  selectSticker(null);
   update();
 }
 
@@ -718,6 +881,6 @@ async function init() {
     document.fonts.load("600 40px 'Fredoka'")
   ]);
   await preloadChars();
-  scheduleRender();                           // redraw with fonts + characters
+  scheduleRender();                           // redraw with fonts + stickers
 }
 init();
