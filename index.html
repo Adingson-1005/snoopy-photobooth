@@ -9,25 +9,46 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+
+  <!-- LANDING -->
   <section id="landing" class="screen active">
-  <div class="floaters" id="floaters"></div>
+    <div class="floaters" id="floaters"></div>
 
-  <img class="char c1" src="assets/characters/snoopy1.png" alt="" onerror="this.style.display='none'">
-  <img class="char c2" src="assets/characters/snoopy2.png" alt="" onerror="this.style.display='none'">
-  <img class="char c3" src="assets/characters/snoopy3.png" alt="" onerror="this.style.display='none'">
-  <img class="char c4" src="assets/characters/snoopy4.png" alt="" onerror="this.style.display='none'">
+    <img class="char c1" src="assets/characters/snoopy1.png" alt="" onerror="this.style.display='none'">
+    <img class="char c2" src="assets/characters/snoopy2.png" alt="" onerror="this.style.display='none'">
+    <img class="char c3" src="assets/characters/snoopy3.png" alt="" onerror="this.style.display='none'">
+    <img class="char c4" src="assets/characters/snoopy4.png" alt="" onerror="this.style.display='none'">
 
-  <div class="landing-card">
-    <h1>Welcome to Snoopy's Photo Booth!</h1>
-    <p>Happy Birthday, [Name]! 🎂<br>Make a photostrip of your favorite moments and keep it forever.</p>
-    <button id="startBtn" class="btn-primary">Start Creating</button>
-  </div>
-</section>
-
-  <section id="editor" class="screen">
-    <h2>Photo Booth</h2>
+    <div class="landing-card">
+      <h1>Welcome to Snoopy's Photo Booth!</h1>
+      <p>Happy Birthday!<br>Make a photostrip of your favorite moments and keep it forever.</p>
+      <button id="startBtn" class="btn-primary">Start Creating</button>
+    </div>
   </section>
 
+  <!-- EDITOR -->
+  <section id="editor" class="screen">
+    <h2>Photo Booth</h2>
+    <p class="hint">Add 4 photos. Tap a box to choose one.</p>
+
+    <div class="editor-grid">
+      <div class="panel">
+        <div class="slots" id="slots"></div>
+        <p class="error" id="uploadError" role="alert"></p>
+        <button id="generateBtn" class="btn-primary" disabled>Generate Photostrip</button>
+        <button id="backBtn" class="btn-ghost">Back</button>
+      </div>
+
+      <div class="panel">
+        <h3>Preview</h3>
+        <div class="preview-strip" id="previewStrip"></div>
+      </div>
+    </div>
+
+    <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" hidden>
+  </section>
+
+  <!-- RESULT -->
   <section id="result" class="screen">
     <h2>Your Photostrip</h2>
   </section>
