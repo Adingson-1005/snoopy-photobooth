@@ -1,9 +1,29 @@
 // ===== SCREEN NAVIGATION =====
 const screens = document.querySelectorAll('.screen');
 
-function showScreen(id) {
+function showScreen(id, historyMode = 'push') {
+  if (!document.getElementById(id)) return;
+
   screens.forEach(s => s.classList.toggle('active', s.id === id));
   window.scrollTo(0, 0);
+
+  if (historyMode === 'push') {
+    const index = Number(history.state?.appIndex) + 1;
+    history.pushState({ appScreen: id, appIndex: index }, '', `#${id}`);
+  } else if (historyMode === 'replace') {
+    const index = Number.isFinite(history.state?.appIndex)
+      ? history.state.appIndex
+      : 0;
+    history.replaceState({ appScreen: id, appIndex: index }, '', `#${id}`);
+  }
+}
+
+function navigateBack(fallbackScreen) {
+  if (history.state?.appIndex > 0) {
+    history.back();
+  } else {
+    showScreen(fallbackScreen, 'replace');
+  }
 }
 
 document.getElementById('startBtn')
@@ -679,7 +699,7 @@ fileInput.addEventListener('change', async () => {
   }
 });
 
-document.getElementById('backBtn').addEventListener('click', () => showScreen('landing'));
+document.getElementById('backBtn').addEventListener('click', () => navigateBack('landing'));
 
 // ===== GENERATE + RESULT =====
 const resultImg = document.getElementById('resultImg');
@@ -727,21 +747,8 @@ async function generateStrip() {
   }
 }
 
-async function downloadStrip() {
-  if (!resultBlob) return;
-  const file = new File([resultBlob], FILENAME, { type: 'image/png' });
-
-  // Phones: native Share sheet (has "Save Image")
-  if (isTouch && navigator.canShare && navigator.canShare({ files: [file] })) {
-    try {
-      await navigator.share({ files: [file], title: "Snoopy's Photo Booth" });
-      return;
-    } catch (err) {
-      if (err.name === 'AbortError') return;   // user closed the sheet
-    }
-  }
-
-  // Desktop / fallback: normal download
+function downloadStrip() {
+  if (!resultUrl) return;
   const a = document.createElement('a');
   a.href = resultUrl;
   a.download = FILENAME;
@@ -763,7 +770,7 @@ function resetAll() {
 
 generateBtn.addEventListener('click', generateStrip);
 downloadBtn.addEventListener('click', downloadStrip);
-document.getElementById('editBtn').addEventListener('click', () => showScreen('editor'));
+document.getElementById('editBtn').addEventListener('click', () => navigateBack('editor'));
 
 resetBtn.addEventListener('click', () => {
   if (confirm('Clear your photos and start over?')) resetAll();
@@ -772,7 +779,7 @@ resetBtn.addEventListener('click', () => {
 document.getElementById('anotherBtn').addEventListener('click', () => {
   if (!confirm('Start a new photostrip? Your current one will be cleared. Download it first if you want to keep it.')) return;
   resetAll();
-  showScreen('editor');
+  showScreen('editor', 'replace');
 });
 
 // ===== CROP / ADJUST EDITOR =====
@@ -893,9 +900,23 @@ cropModal.addEventListener('click', e => { if (e.target === cropModal) closeCrop
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !cropModal.hidden) closeCropper(); });
 
 // ===== INIT =====
+function handlePopState(event) {
+  const stateScreen = event.state?.appScreen;
+  const hashScreen = location.hash.slice(1);
+  const id = stateScreen || (document.getElementById(hashScreen) ? hashScreen : 'landing');
+  showScreen(id, 'none');
+
+  if (!cropModal.hidden) closeCropper();
+}
+
+window.addEventListener('popstate', handlePopState);
+
 async function init() {
   syncControls();
   update();                                   // draw immediately
+  const initialHash = location.hash.slice(1);
+  const initialScreen = document.getElementById(initialHash) ? initialHash : 'landing';
+  showScreen(initialScreen, 'replace');
   await Promise.all([                         // wait for fonts so the canvas uses them
     document.fonts.load("76px 'Pacifico'"),
     document.fonts.load("400 40px 'Fredoka'"),
