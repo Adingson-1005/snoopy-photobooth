@@ -150,9 +150,10 @@
       <img id="resultImg" alt="Your finished photostrip">
     </div>
 
-    <p class="tip" id="saveTip">If the download doesn't start, press and hold the image, then choose Save.</p>
+    <p class="hint small" id="saveStatus" role="status" aria-live="polite" hidden></p>
 
     <div class="actions result-actions">
+      <button id="shareBtn" class="btn-primary">Share / Save to Photos</button>
       <button id="downloadBtn" class="btn-primary">
         <svg class="btn-icon" viewBox="0 0 24 24" width="20" height="20"><path d="M12 4v12M7 11l5 5 5-5M4 20h16"/></svg>Download Image
       </button>
