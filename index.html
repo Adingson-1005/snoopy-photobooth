@@ -29,19 +29,70 @@
   <!-- EDITOR -->
   <section id="editor" class="screen">
     <h2>Photo Booth</h2>
-    <p class="hint">Add 4 photos. Tap a box to choose one.</p>
+    <p class="hint">Add 4 photos, then make it yours.</p>
 
     <div class="editor-grid">
-      <div class="panel">
-        <div class="slots" id="slots"></div>
-        <p class="error" id="uploadError" role="alert"></p>
-        <button id="generateBtn" class="btn-primary" disabled>Generate Photostrip</button>
-        <button id="backBtn" class="btn-ghost">Back</button>
+      <div class="col">
+
+        <div class="panel">
+          <h3>1. Your photos</h3>
+          <div class="slots" id="slots"></div>
+          <p class="error" id="uploadError" role="alert"></p>
+        </div>
+
+        <div class="panel customize">
+          <h3>2. Customize</h3>
+
+          <div class="field">
+            <span class="label">Theme</span>
+            <div class="chips">
+              <label class="chip"><input type="radio" name="theme" value="pink" checked><span>Pink Snoopy</span></label>
+              <label class="chip"><input type="radio" name="theme" value="vintage"><span>Vintage Peanuts</span></label>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="label" for="nameInput">Name</label>
+            <input type="text" id="nameInput" maxlength="20" placeholder="Birthday star's name">
+          </div>
+
+          <div class="field">
+            <label class="label" for="msgInput">Greeting message</label>
+            <input type="text" id="msgInput" maxlength="40" placeholder="Wishing you the happiest day!">
+          </div>
+
+          <div class="field">
+            <label class="label" for="dateInput">Date or occasion</label>
+            <input type="text" id="dateInput" maxlength="30" placeholder="My Special Day">
+          </div>
+
+          <div class="field">
+            <span class="label">Background color</span>
+            <div class="swatches" id="swatches"></div>
+          </div>
+
+          <div class="field">
+            <span class="label">Stickers</span>
+            <div class="chips">
+              <label class="chip"><input type="checkbox" data-sticker="snoopy" checked><span>Snoopy</span></label>
+              <label class="chip"><input type="checkbox" data-sticker="woodstock" checked><span>Woodstock</span></label>
+              <label class="chip"><input type="checkbox" data-sticker="hearts" checked><span>Hearts</span></label>
+              <label class="chip"><input type="checkbox" data-sticker="stars" checked><span>Stars</span></label>
+              <label class="chip"><input type="checkbox" data-sticker="flowers" checked><span>Flowers</span></label>
+              <label class="chip"><input type="checkbox" data-sticker="sparkles" checked><span>Sparkles</span></label>
+            </div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="generateBtn" class="btn-primary" disabled>Generate Photostrip</button>
+          <button id="backBtn" class="btn-ghost">Back</button>
+        </div>
       </div>
 
-      <div class="panel">
-        <h3>Preview</h3>
-        <div class="preview-strip" id="previewStrip"></div>
+      <div class="panel preview-panel">
+        <h3>Live preview</h3>
+        <canvas id="previewCanvas" aria-label="Photostrip preview"></canvas>
       </div>
     </div>
 
