@@ -829,6 +829,8 @@ document.getElementById('backBtn').addEventListener('click', () => navigateBack(
 // ===== GENERATE + RESULT =====
 const resultImg = document.getElementById('resultImg');
 const downloadBtn = document.getElementById('downloadBtn');
+const shareBtn = document.getElementById('shareBtn');
+const saveStatus = document.getElementById('saveStatus');
 const resetBtn = document.getElementById('resetBtn');
 const isTouch = window.matchMedia('(pointer: coarse)').matches;
 const FILENAME = 'snoopy-birthday-photostrip.png';
@@ -862,6 +864,8 @@ async function generateStrip() {
     resultBlob = blob;
     resultUrl = URL.createObjectURL(blob);
     resultImg.src = resultUrl;
+    saveStatus.textContent = '';
+    saveStatus.hidden = true;
     errorEl.textContent = '';
     showScreen('result');
   } catch (err) {
@@ -882,6 +886,39 @@ function downloadStrip() {
   a.remove();
 }
 
+async function shareStrip() {
+  if (!resultBlob) return;
+
+  saveStatus.textContent = '';
+  saveStatus.hidden = true;
+  if (typeof File !== 'function') {
+    downloadStrip();
+    saveStatus.textContent = 'This browser cannot share image files, so the image was downloaded instead. On phones, check Files or Downloads.';
+    saveStatus.hidden = false;
+    return;
+  }
+
+  const file = new File([resultBlob], FILENAME, { type: 'image/png' });
+  if (typeof navigator.share !== 'function'
+    || typeof navigator.canShare !== 'function'
+    || !navigator.canShare({ files: [file] })) {
+    downloadStrip();
+    saveStatus.textContent = 'Photo sharing is not available in this browser, so the image was downloaded instead. On phones, check Files or Downloads.';
+    saveStatus.hidden = false;
+    return;
+  }
+
+  try {
+    await navigator.share({ files: [file], title: 'Your Snoopy photostrip' });
+    saveStatus.textContent = 'Share menu closed. If you chose Save Image or Photos/Gallery, check your gallery.';
+    saveStatus.hidden = false;
+  } catch (err) {
+    if (err && err.name === 'AbortError') return;
+    saveStatus.textContent = 'Could not open the photo share menu. Use Download Image instead.';
+    saveStatus.hidden = false;
+  }
+}
+
 function resetAll() {
   photos.fill(null);
   adjusts.forEach((_, i) => { adjusts[i] = defaultAdjust(); });
@@ -895,6 +932,7 @@ function resetAll() {
 
 generateBtn.addEventListener('click', generateStrip);
 downloadBtn.addEventListener('click', downloadStrip);
+shareBtn.addEventListener('click', shareStrip);
 document.getElementById('editBtn').addEventListener('click', () => navigateBack('editor'));
 
 resetBtn.addEventListener('click', () => {
