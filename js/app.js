@@ -15,7 +15,7 @@ const PATH_D = {
   star: 'M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17l-6.1 3.6 1.4-6.8L2.2 9.1l6.9-.8z',
   sparkle: 'M12 1l2.2 8.8L23 12l-8.8 2.2L12 23l-2.2-8.8L1 12l8.8-2.2z'
 };
-const svgIcon = d => `<svg viewBox="0 0 24 24"><path d="${d}"/></svg>`;
+const svgIcon = d => `<svg viewBox="0 0 24 24" width="24" height="24"><path d="${d}"/></svg>`;
 
 // ===== LANDING FLOATERS =====
 const floaterKeys = ['heart', 'star', 'sparkle'];
@@ -36,9 +36,9 @@ for (let i = 0; i < 18; i++) {
 
 // ===== CONFIG (edit these anytime) =====
 const CONFIG = {
-  recipientName: '',          // e.g. 'Maria'
-  woodstock: [],              // numbers of your Woodstock images, e.g. [5, 9]
-  snoopy: [1, 2, 3, 4, 6, 7, 8, 10]  // numbers of your Snoopy images
+  recipientName: '',                  // e.g. 'Maria'
+  woodstock: [],                      // numbers of your Woodstock images, e.g. [5, 9]
+  snoopy: [1, 2, 3, 4, 6, 7, 8, 10]   // numbers of your Snoopy images
 };
 
 // ===== THEMES =====
@@ -88,15 +88,22 @@ const ALLOWED = ['image/jpeg', 'image/png', 'image/webp'];
 const photos = [null, null, null, null];   // each: canvas holding resized photo
 let activeSlot = null;
 
+// Per-photo adjustments (crop position, zoom, rotation, filters)
+const FILTER_OK = 'filter' in CanvasRenderingContext2D.prototype;
+const defaultAdjust = () => ({ zoom: 1, panX: 0, panY: 0, rot: 0, brightness: 100, contrast: 100, saturation: 100 });
+const adjusts = photos.map(defaultAdjust);
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
 const slotsEl = document.getElementById('slots');
 const fileInput = document.getElementById('fileInput');
 const errorEl = document.getElementById('uploadError');
 const generateBtn = document.getElementById('generateBtn');
 
 const SVG = {
-  upload: '<svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg>',
-  swap: '<svg viewBox="0 0 24 24"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg>',
-  trash: '<svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>'
+  upload: '<svg viewBox="0 0 24 24" width="32" height="32"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg>',
+  swap: '<svg viewBox="0 0 24 24" width="16" height="16"><path d="M4 8h13l-3-3M20 16H7l3 3"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" width="16" height="16"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>',
+  crop: '<svg viewBox="0 0 24 24" width="16" height="16"><path d="M6 2v14a2 2 0 0 0 2 2h14M18 22V8a2 2 0 0 0-2-2H2"/></svg>'
 };
 
 // ===== IMAGE LOADING (fixes EXIF rotation + shrinks big photos) =====
@@ -137,6 +144,7 @@ function renderSlots() {
       slot.append(img);
       slot.insertAdjacentHTML('beforeend', num + `
         <div class="slot-actions">
+          <button class="icon-btn" data-act="edit" aria-label="Crop and adjust">${SVG.crop}</button>
           <button class="icon-btn" data-act="replace" aria-label="Replace">${SVG.swap}</button>
           <button class="icon-btn" data-act="remove" aria-label="Remove">${SVG.trash}</button>
         </div>`);
@@ -146,7 +154,8 @@ function renderSlots() {
 
     slot.addEventListener('click', (e) => {
       const act = e.target.closest('[data-act]')?.dataset.act;
-      if (act === 'remove') { photos[i] = null; update(); return; }
+      if (act === 'remove') { photos[i] = null; adjusts[i] = defaultAdjust(); update(); return; }
+      if (act === 'edit') { openCropper(i); return; }
       activeSlot = i;
       fileInput.click();
     });
@@ -158,7 +167,7 @@ function renderSlots() {
 }
 
 // =====================================================================
-//  STRIP RENDERER (used for the live preview now, and for the PNG in Step 5)
+//  STRIP RENDERER (used for the live preview and for the final PNG)
 // =====================================================================
 const W = 900, H = 2400;
 const L = { photoX: 90, photoW: 720, photoH: 450, photoY: 270, gap: 30 };
@@ -227,10 +236,37 @@ function drawText(ctx, text, x, y, maxW, start, min, family, weight, color) {
   ctx.fillText(text, x, y);
 }
 
-function drawCover(ctx, src, x, y, w, h) {  // crop to fill, no stretching
-  const s = Math.max(w / src.width, h / src.height);
-  const sw = w / s, sh = h / s;
-  ctx.drawImage(src, (src.width - sw) / 2, (src.height - sh) / 2, sw, sh, x, y, w, h);
+// Where the photo sits inside a frame, given zoom/rotation/pan
+function adjustGeometry(src, w, h, adj) {
+  const turned = adj.rot % 2 === 1;
+  const sw = turned ? src.height : src.width;
+  const sh = turned ? src.width : src.height;
+  const s = Math.max(w / sw, h / sh) * adj.zoom;
+  return {
+    s,
+    slackX: Math.max(0, (sw * s - w) / 2),
+    slackY: Math.max(0, (sh * s - h) / 2)
+  };
+}
+
+// Draws one photo into a frame, cropped and adjusted (no stretching)
+function drawAdjusted(ctx, src, x, y, w, h, adj) {
+  const { s, slackX, slackY } = adjustGeometry(src, w, h, adj);
+  const ox = clamp(adj.panX, -1, 1) * slackX;
+  const oy = clamp(adj.panY, -1, 1) * slackY;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  ctx.clip();
+  if (FILTER_OK && (adj.brightness !== 100 || adj.contrast !== 100 || adj.saturation !== 100)) {
+    ctx.filter = `brightness(${adj.brightness}%) contrast(${adj.contrast}%) saturate(${adj.saturation}%)`;
+  }
+  ctx.translate(x + w / 2 + ox, y + h / 2 + oy);
+  ctx.rotate(adj.rot * Math.PI / 2);
+  ctx.scale(s, s);
+  ctx.drawImage(src, -src.width / 2, -src.height / 2);
+  ctx.restore();
 }
 
 function drawShape(ctx, kind, x, y, size, color, rot = 0) {
@@ -307,7 +343,7 @@ function drawHeader(ctx, s, theme) {
   if (msg) drawText(ctx, msg, W / 2, 195, 500, 36, 20, FREDOKA, '600', theme.text);
 }
 
-function drawPhotos(ctx, theme, list) {
+function drawPhotos(ctx, theme, list, adjustList) {
   for (let i = 0; i < 4; i++) {
     const x = L.photoX, y = L.photoY + i * (L.photoH + L.gap);
 
@@ -326,7 +362,7 @@ function drawPhotos(ctx, theme, list) {
     roundRectPath(ctx, x + 10, y + 10, L.photoW - 20, L.photoH - 20, 18);
     ctx.clip();
     if (list[i]) {
-      drawCover(ctx, list[i], x + 10, y + 10, L.photoW - 20, L.photoH - 20);
+      drawAdjusted(ctx, list[i], x + 10, y + 10, L.photoW - 20, L.photoH - 20, adjustList[i]);
     } else {
       ctx.fillStyle = 'rgba(0,0,0,0.06)';
       ctx.fillRect(x, y, L.photoW, L.photoH);
@@ -360,7 +396,7 @@ function drawCharacters(ctx, s) {
 }
 
 // Main: draws the whole strip. scale < 1 is used for the small preview.
-function renderStrip(ctx, s, photoList, scale = 1) {
+function renderStrip(ctx, s, photoList, scale = 1, adjustList = adjusts) {
   const theme = THEMES[s.theme];
   const bg = theme.bgs[s.bgIndex] || theme.bgs[0];
   ctx.save();
@@ -369,7 +405,7 @@ function renderStrip(ctx, s, photoList, scale = 1) {
   drawBackground(ctx, theme, bg.color);
   drawMarginDecor(ctx, s, theme);
   drawHeader(ctx, s, theme);
-  drawPhotos(ctx, theme, photoList);
+  drawPhotos(ctx, theme, photoList, adjustList);
   drawFooter(ctx, s, theme);
   drawCharacters(ctx, s);
   ctx.restore();
@@ -412,7 +448,7 @@ function renderSwatches() {
   });
 }
 
-// Push current settings into the form fields (also used by Reset in Step 5)
+// Push current settings into the form fields (also used by Reset)
 function syncControls() {
   nameInput.value = settings.name;
   msgInput.value = settings.message;
@@ -454,6 +490,7 @@ fileInput.addEventListener('change', async () => {
   errorEl.textContent = '';
   try {
     photos[activeSlot] = await fileToCanvas(file);
+    adjusts[activeSlot] = defaultAdjust();
     update();
   } catch (err) {
     errorEl.textContent = err.message;
@@ -461,7 +498,6 @@ fileInput.addEventListener('change', async () => {
 });
 
 document.getElementById('backBtn').addEventListener('click', () => showScreen('landing'));
-
 
 // ===== GENERATE + RESULT =====
 const resultImg = document.getElementById('resultImg');
@@ -534,6 +570,7 @@ async function downloadStrip() {
 
 function resetAll() {
   photos.fill(null);
+  adjusts.forEach((_, i) => { adjusts[i] = defaultAdjust(); });
   settings = defaultSettings();
   errorEl.textContent = '';
   syncControls();
@@ -553,6 +590,124 @@ document.getElementById('anotherBtn').addEventListener('click', () => {
   resetAll();
   showScreen('editor');
 });
+
+// ===== CROP / ADJUST EDITOR =====
+const cropModal = document.getElementById('cropModal');
+const cropCanvas = document.getElementById('cropCanvas');
+const cctx = cropCanvas.getContext('2d');
+const FW = L.photoW - 20, FH = L.photoH - 20;      // real frame size (700 x 430)
+cropCanvas.width = FW;
+cropCanvas.height = FH;
+
+const zoomRange = document.getElementById('zoomRange');
+const brightRange = document.getElementById('brightRange');
+const contrastRange = document.getElementById('contrastRange');
+const satRange = document.getElementById('satRange');
+
+let cropIndex = null;
+let draft = null;
+
+function drawCropper() {
+  cctx.fillStyle = '#ddd';
+  cctx.fillRect(0, 0, FW, FH);
+  drawAdjusted(cctx, photos[cropIndex], 0, 0, FW, FH, draft);
+
+  // rule-of-thirds guide (editor only, never exported)
+  cctx.strokeStyle = 'rgba(255,255,255,0.7)';
+  cctx.lineWidth = 2;
+  cctx.beginPath();
+  for (let k = 1; k < 3; k++) {
+    cctx.moveTo(FW * k / 3, 0); cctx.lineTo(FW * k / 3, FH);
+    cctx.moveTo(0, FH * k / 3); cctx.lineTo(FW, FH * k / 3);
+  }
+  cctx.stroke();
+}
+
+function syncCropControls() {
+  zoomRange.value = Math.round(draft.zoom * 100);
+  brightRange.value = draft.brightness;
+  contrastRange.value = draft.contrast;
+  satRange.value = draft.saturation;
+}
+
+function openCropper(i) {
+  cropIndex = i;
+  draft = { ...adjusts[i] };
+  document.getElementById('filterControls').hidden = !FILTER_OK;
+  syncCropControls();
+  cropModal.hidden = false;
+  document.body.style.overflow = 'hidden';
+  drawCropper();
+  document.getElementById('cropApply').focus();
+}
+
+function closeCropper() {
+  cropModal.hidden = true;
+  document.body.style.overflow = '';
+  cropIndex = null;
+  draft = null;
+}
+
+// Sliders
+[
+  [zoomRange, v => { draft.zoom = v / 100; }],
+  [brightRange, v => { draft.brightness = v; }],
+  [contrastRange, v => { draft.contrast = v; }],
+  [satRange, v => { draft.saturation = v; }]
+].forEach(([el, apply]) => {
+  el.addEventListener('input', () => { apply(+el.value); drawCropper(); });
+});
+
+// Rotate
+document.getElementById('rotLeft').addEventListener('click', () => {
+  draft.rot = (draft.rot + 3) % 4; draft.panX = 0; draft.panY = 0; drawCropper();
+});
+document.getElementById('rotRight').addEventListener('click', () => {
+  draft.rot = (draft.rot + 1) % 4; draft.panX = 0; draft.panY = 0; drawCropper();
+});
+
+// Drag to reposition (mouse + touch)
+let drag = null;
+cropCanvas.addEventListener('pointerdown', e => {
+  drag = { x: e.clientX, y: e.clientY, panX: draft.panX, panY: draft.panY };
+  cropCanvas.setPointerCapture(e.pointerId);
+  cropCanvas.classList.add('dragging');
+});
+cropCanvas.addEventListener('pointermove', e => {
+  if (!drag) return;
+  const k = FW / cropCanvas.getBoundingClientRect().width;   // screen px -> canvas px
+  const { slackX, slackY } = adjustGeometry(photos[cropIndex], FW, FH, draft);
+  const dx = (e.clientX - drag.x) * k;
+  const dy = (e.clientY - drag.y) * k;
+  draft.panX = slackX ? clamp(drag.panX + dx / slackX, -1, 1) : 0;
+  draft.panY = slackY ? clamp(drag.panY + dy / slackY, -1, 1) : 0;
+  drawCropper();
+});
+['pointerup', 'pointercancel'].forEach(ev => {
+  cropCanvas.addEventListener(ev, () => { drag = null; cropCanvas.classList.remove('dragging'); });
+});
+
+// Mouse wheel zoom (desktop)
+cropCanvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  draft.zoom = clamp(draft.zoom - e.deltaY / 1000, 1, 3);
+  syncCropControls();
+  drawCropper();
+}, { passive: false });
+
+// Buttons
+document.getElementById('cropReset').addEventListener('click', () => {
+  draft = defaultAdjust(); syncCropControls(); drawCropper();
+});
+document.getElementById('cropCancel').addEventListener('click', closeCropper);
+document.getElementById('cropApply').addEventListener('click', () => {
+  adjusts[cropIndex] = { ...draft };
+  closeCropper();
+  update();
+});
+cropModal.addEventListener('click', e => { if (e.target === cropModal) closeCropper(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !cropModal.hidden) closeCropper(); });
+
 // ===== INIT =====
 async function init() {
   syncControls();
