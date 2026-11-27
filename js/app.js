@@ -197,7 +197,11 @@ async function fileToCanvas(file) {
   try {
     bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
   } catch {
-    throw new Error('That file could not be opened as an image.');
+    try {
+      bitmap = await createImageBitmap(file);   // fallback for older Safari
+    } catch {
+      throw new Error('That file could not be opened as an image.');
+    }
   }
   const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
   const c = document.createElement('canvas');
@@ -713,6 +717,7 @@ tool('stDelete',  st => { placed = placed.filter(s => s !== st); selectSticker(n
 document.addEventListener('keydown', e => {
   if (e.key !== 'Delete' || selectedId === null) return;
   if (!document.getElementById('cropModal').hidden) return;
+  if (!cameraModal.hidden) return;
   if (/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) return;
   placed = placed.filter(s => s.id !== selectedId);
   selectSticker(null);
@@ -740,6 +745,7 @@ fileInput.addEventListener('change', async () => {
   }
 });
 
+// ===== CAMERA =====
 function stopCamera() {
   cameraRequestId++;
   cameraCaptureBtn.disabled = true;
@@ -808,14 +814,21 @@ document.addEventListener('keydown', e => {
 cameraCaptureBtn.addEventListener('click', () => {
   if (!cameraStream || !cameraVideo.videoWidth || cameraSlot === null) return;
 
-  const scale = Math.min(1, MAX_SIDE / Math.max(cameraVideo.videoWidth, cameraVideo.videoHeight));
+  // crop the center of the video to the same shape as a strip frame
+  const vw = cameraVideo.videoWidth, vh = cameraVideo.videoHeight;
+  const aspect = FW / FH;
+  let sw = vw, sh = vw / aspect;
+  if (sh > vh) { sh = vh; sw = vh * aspect; }
+  const sx = (vw - sw) / 2, sy = (vh - sh) / 2;
+
+  const scale = Math.min(1, MAX_SIDE / Math.max(sw, sh));
   const canvas = document.createElement('canvas');
-  canvas.width = Math.round(cameraVideo.videoWidth * scale);
-  canvas.height = Math.round(cameraVideo.videoHeight * scale);
+  canvas.width = Math.round(sw * scale);
+  canvas.height = Math.round(sh * scale);
   const context = canvas.getContext('2d');
   context.translate(canvas.width, 0);
-  context.scale(-1, 1);
-  context.drawImage(cameraVideo, 0, 0, canvas.width, canvas.height);
+  context.scale(-1, 1);                      // mirrored, like the live preview
+  context.drawImage(cameraVideo, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
 
   photos[cameraSlot] = canvas;
   adjusts[cameraSlot] = defaultAdjust();
@@ -832,7 +845,6 @@ const downloadBtn = document.getElementById('downloadBtn');
 const shareBtn = document.getElementById('shareBtn');
 const saveStatus = document.getElementById('saveStatus');
 const resetBtn = document.getElementById('resetBtn');
-const isTouch = window.matchMedia('(pointer: coarse)').matches;
 const FILENAME = 'snoopy-birthday-photostrip.png';
 let resultBlob = null;
 let resultUrl = null;
@@ -871,7 +883,7 @@ async function generateStrip() {
   } catch (err) {
     errorEl.textContent = err.message || 'Something went wrong. Please try again.';
   } finally {
-    generateBtn.textContent = 'Generate Photostrip';
+    generateBtn.textContent = 'Save Photostrip';
     generateBtn.disabled = photos.some(p => !p);
   }
 }
@@ -941,7 +953,7 @@ resetBtn.addEventListener('click', () => {
 document.getElementById('anotherBtn').addEventListener('click', () => {
   if (!confirm('Start a new photostrip? Your current one will be cleared. Download it first if you want to keep it.')) return;
   resetAll();
-  showScreen('editor', 'replace');
+  navigateBack('editor');
 });
 
 // ===== CROP / ADJUST EDITOR =====
@@ -1065,8 +1077,9 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && !cropModal
 function handlePopState(event) {
   const stateScreen = event.state?.appScreen;
   const hashScreen = location.hash.slice(1);
-  const id = stateScreen || (document.getElementById(hashScreen) ? hashScreen : 'landing');
-  showScreen(id, 'none');
+  const requested = stateScreen || (document.getElementById(hashScreen) ? hashScreen : 'landing');
+  const id = (requested === 'result' && !resultUrl) ? 'editor' : requested;   // nothing generated yet
+  showScreen(id, id === requested ? 'none' : 'replace');
 
   if (!cameraModal.hidden) stopCamera();
   if (!cropModal.hidden) closeCropper();
@@ -1081,7 +1094,8 @@ async function init() {
   syncControls();
   update();                                   // draw immediately
   const initialHash = location.hash.slice(1);
-  const initialScreen = document.getElementById(initialHash) ? initialHash : 'landing';
+  let initialScreen = document.getElementById(initialHash) ? initialHash : 'landing';
+  if (initialScreen === 'result') initialScreen = 'editor';   // nothing generated after a reload
   showScreen(initialScreen, 'replace');
   await Promise.all([                         // wait for fonts so the canvas uses them
     document.fonts.load("76px 'Pacifico'"),
@@ -1094,6 +1108,7 @@ async function init() {
 init();
 
 // ===== LANDING PALETTE SWITCH (temporary, for comparing) =====
+// Safe to leave in: does nothing if you delete the Palette button from index.html
 const landingEl = document.getElementById('landing');
 const paletteBtn = document.getElementById('paletteBtn');
 const paletteLabel = document.getElementById('paletteLabel');
@@ -1104,10 +1119,12 @@ const PALETTES = [
 ];
 let paletteIdx = 0;
 
-paletteBtn.addEventListener('click', () => {
-  paletteIdx = (paletteIdx + 1) % PALETTES.length;
-  const p = PALETTES[paletteIdx];
-  if (p.key) landingEl.dataset.palette = p.key;
-  else delete landingEl.dataset.palette;
-  paletteLabel.textContent = 'Palette: ' + p.label;
-});
+if (paletteBtn) {
+  paletteBtn.addEventListener('click', () => {
+    paletteIdx = (paletteIdx + 1) % PALETTES.length;
+    const p = PALETTES[paletteIdx];
+    if (p.key) landingEl.dataset.palette = p.key;
+    else delete landingEl.dataset.palette;
+    if (paletteLabel) paletteLabel.textContent = 'Palette: ' + p.label;
+  });
+}

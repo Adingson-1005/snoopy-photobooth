@@ -423,3 +423,9 @@ button {
 }
 .palette-btn svg { fill: none; stroke: var(--red); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .palette-btn circle { fill: var(--red); stroke: none; }
+
+#cameraVideo {
+  aspect-ratio: 700 / 430;
+  max-height: none;
+  object-fit: cover;
+}
