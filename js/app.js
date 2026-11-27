@@ -7,14 +7,17 @@ function showScreen(id, historyMode = 'push') {
   screens.forEach(s => s.classList.toggle('active', s.id === id));
   window.scrollTo(0, 0);
 
+  // the landing page gets a clean link with no #landing
+  const url = id === 'landing' ? location.pathname + location.search : `#${id}`;
+
   if (historyMode === 'push') {
     const index = Number(history.state?.appIndex) + 1;
-    history.pushState({ appScreen: id, appIndex: index }, '', `#${id}`);
+    history.pushState({ appScreen: id, appIndex: index }, '', url);
   } else if (historyMode === 'replace') {
     const index = Number.isFinite(history.state?.appIndex)
       ? history.state.appIndex
       : 0;
-    history.replaceState({ appScreen: id, appIndex: index }, '', `#${id}`);
+    history.replaceState({ appScreen: id, appIndex: index }, '', url);
   }
 }
 
