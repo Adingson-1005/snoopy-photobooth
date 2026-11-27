@@ -908,7 +908,7 @@ async function shareStrip() {
   saveStatus.hidden = true;
 
   if (typeof File !== 'function') {
-    saveStatus.textContent = 'Photo sharing is not available in this browser. Use Download Image instead.';
+    saveStatus.textContent = 'Make sure youre in the browser, not messenger (click open browser)';
     saveStatus.hidden = false;
     return;
   }
@@ -917,7 +917,7 @@ async function shareStrip() {
   if (typeof navigator.share !== 'function'
     || typeof navigator.canShare !== 'function'
     || !navigator.canShare({ files: [file] })) {
-    saveStatus.textContent = 'Photo sharing is not available in this browser. Use Download Image instead.';
+    saveStatus.textContent = 'Make sure youre in the browser, not messenger (click open browser)';
     saveStatus.hidden = false;
     return;
   }
