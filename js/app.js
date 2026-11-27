@@ -908,7 +908,7 @@ async function shareStrip() {
   saveStatus.hidden = true;
 
   if (typeof File !== 'function') {
-    saveStatus.textContent = 'Make sure youre in the browser, not messenger (click open browser)';
+    saveStatus.textContent = 'Make sure youre in the browser, not messenger (click open in browser)';
     saveStatus.hidden = false;
     return;
   }
@@ -917,7 +917,7 @@ async function shareStrip() {
   if (typeof navigator.share !== 'function'
     || typeof navigator.canShare !== 'function'
     || !navigator.canShare({ files: [file] })) {
-    saveStatus.textContent = 'Make sure youre in the browser, not messenger (click open browser)';
+    saveStatus.textContent = 'Make sure youre in the browser, not messenger (click open in browser)';
     saveStatus.hidden = false;
     return;
   }
@@ -1129,5 +1129,24 @@ if (paletteBtn) {
     if (p.key) landingEl.dataset.palette = p.key;
     else delete landingEl.dataset.palette;
     if (paletteLabel) paletteLabel.textContent = 'Palette: ' + p.label;
+  });
+}
+
+// ===== IN-APP BROWSER (Messenger / Instagram) WARNING =====
+const inAppBanner = document.getElementById('inAppBanner');
+const IN_APP = /FBAN|FBAV|FB_IAB|FBIOS|Messenger|Instagram|TikTok|musical_ly|Line\//i.test(navigator.userAgent);
+
+if (IN_APP && inAppBanner) {
+  inAppBanner.hidden = false;
+  document.getElementById('inAppDismiss').addEventListener('click', () => { inAppBanner.hidden = true; });
+  document.getElementById('copyLinkBtn').addEventListener('click', async e => {
+    const btn = e.currentTarget;
+    const link = location.origin + location.pathname;
+    try {
+      await navigator.clipboard.writeText(link);
+      btn.textContent = 'Link copied';
+    } catch {
+      window.prompt('Copy this link and open it in your browser:', link);
+    }
   });
 }
